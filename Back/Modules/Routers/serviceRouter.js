@@ -1,14 +1,9 @@
 const express = require("express");
+const controller = require("../Controllers/serviceController.js").serviceController;
 const router = express.Router();
 
-router.post("/clear", function(req, res)
-{
-    res.send("Post clear");
-});
+router.post("/clear", controller.clear);
 
-router.get("/status", function(req, res)
-{
-    res.send("Get status");
-});
+router.get("/status", controller.status);
 
 module.exports.serviceRouter = router;

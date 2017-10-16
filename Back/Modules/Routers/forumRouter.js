@@ -1,29 +1,15 @@
 const express = require("express");
+const controller = require("../Controllers/forumController.js").forumController;
 const router = express.Router();
 
-router.post("/create", function(req, res, nxt)
-{
-    res.send("Post-create");
-});
+router.post("/create", controller.createForum);
 
-router.post("/:slug/create", function(req, res)
-{
-    res.send("Post branch create: " + req.params.slug);
-});
+router.post("/:slug/create", controller.createSlug);
 
-router.get("/:slug/details", function(req, res)
-{
-    res.send("Get details: " + req.params.slug);
-});
+router.get("/:slug/details", controller.slugDetails);
 
-router.get("/:slug/threads", function(req, res)
-{
-    res.send("Get threads: " + req.params.slug);
-});
+router.get("/:slug/threads", controller.slugThreads);
 
-router.get("/:slug/users", function(req, res)
-{
-    res.send("Get users: " + req.params.slug);
-});
+router.get("/:slug/users", controller.slugUsers);
 
 module.exports.forumRouter = router;
