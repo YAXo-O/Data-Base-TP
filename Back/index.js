@@ -1,5 +1,6 @@
 const express = require("express");
 const body = require("body-parser");
+const db = require("./Modules/dataBase.js").db;
 
 const forumRouter = require("./Modules/Routers/forumRouter.js").forumRouter;
 const postRouter = require("./Modules/Routers/postRouter.js").postRouter;
