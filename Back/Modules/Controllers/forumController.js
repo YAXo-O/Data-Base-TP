@@ -1,7 +1,12 @@
+const db = require("../dataBase.js");
+
 class forumController
 {
     static createForum(req, res)
     {
+        const body = req.body;
+        console.log(body);
+
         res.send("Forum create");
     }
 

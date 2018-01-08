@@ -1,18 +1,54 @@
+const requests = require("../dataBase.js").dbRequests;
+
 class userController
 {
-    static create(req, res)
+    static async create(req, res)
     {
-        res.send("Create: " + req.params.nickname);
+        let users = await requests.getUsers(req.body.email, req.params.nickname);
+        if(users.length !== 0)
+        {
+            res.status(409).json(users);
+
+            return;
+        }
+
+        res.status(201).json(await requests.createUser({nickname: req.params.nickname, email: req.body.email,
+            fullname: req.body.fullname, about: req.body.about}));
     }
 
-    static showProfile(req, res)
+    static async showProfile(req, res)
     {
-        res.send("Show profile: " + req.params.nickname);
+        let user = await requests.getUser(req.params.nickname);
+        if(user.length === 0)
+        {
+            res.status(404).json({message: `Can't find user with nickname '${req.params.nickname}'\n`});
+
+            return;
+        }
+
+        res.status(200).json(user);
     }
 
-    static alterProfile(req, res)
+    static async alterProfile(req, res)
     {
-        res.send("Alter profile: " + req.params.nickname);
+        let user = await requests.getUser(req.params.nickname);
+        if(user.length === 0)
+        {
+            res.status(404).json({message: `Can't find user with nickname '${req.params.nickname}'\n`});
+
+            return;
+        }
+
+        let conflicts = await requests.checkMail(req.params.nickname, req.body.email);
+        if(conflicts.length !== 0)
+        {
+            req.status(409).json({message: `Mail: '${req.email}' is already in use!\n`});
+
+            return;
+        }
+
+        res.status(200).json(await requests.changeUser({nickname: req.params.nickname,
+                            mail: req.body.email, fullname: req.body.fullname, about: req.body.about}));
     }
 }
 
