@@ -19,7 +19,7 @@ class userController
     static async showProfile(req, res)
     {
         let user = await requests.getUser(req.params.nickname);
-        if(user.length === 0)
+        if(user === null)
         {
             res.status(404).json({message: `Can't find user with nickname '${req.params.nickname}'\n`});
 
@@ -32,7 +32,7 @@ class userController
     static async alterProfile(req, res)
     {
         let user = await requests.getUser(req.params.nickname);
-        if(user.length === 0)
+        if(user === null)
         {
             res.status(404).json({message: `Can't find user with nickname '${req.params.nickname}'\n`});
 
@@ -42,13 +42,20 @@ class userController
         let conflicts = await requests.checkMail(req.params.nickname, req.body.email);
         if(conflicts.length !== 0)
         {
-            req.status(409).json({message: `Mail: '${req.email}' is already in use!\n`});
+            res.status(409).json({message: `Mail: '${req.email}' is already in use!\n`});
 
             return;
         }
 
+        if(!req.body.email)
+            req.body.email = user.email;
+        if(!req.body.fullname)
+            req.body.fullname = user.fullname;
+        if(!req.body.about)
+            req.body.about = user.about;
+
         res.status(200).json(await requests.changeUser({nickname: req.params.nickname,
-                            mail: req.body.email, fullname: req.body.fullname, about: req.body.about}));
+            mail: req.body.email, fullname: req.body.fullname, about: req.body.about}));
     }
 }
 
