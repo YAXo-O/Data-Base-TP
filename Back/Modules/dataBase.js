@@ -319,7 +319,7 @@ ${info.limit ? "LIMIT " + info.limit : ""}`);
                                message = '${message}',
                                isEdited = true
                                WHERE id = ${id}
-                               RETURNING id, author, created, forum, message, thread`);
+                               RETURNING isEdited, id, author, created, forum, message, thread`);
     }
 
     /* Services */
