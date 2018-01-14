@@ -47,20 +47,17 @@ class postController
 
     static async alterIdDetails(req, res)
     {
-        let post = null;
         try
         {
-            post = await requests.alterPost(req.params.id, req.body.message);
-            let forumSlug = await requests.getForumSlug(post.forum);
+            let post = await requests.alterPost(req.params.id, req.body.message);
 
-            post.forum = forumSlug.slug;
+            res.status(200).json(post);
         }
         catch(err)
         {
-            res.status(404).json({message: `Can't find message with id ${req.params.id}!\n`});
+            res.status(404).json(err);
         }
 
-        res.status(200).send(post);
     }
 }
 

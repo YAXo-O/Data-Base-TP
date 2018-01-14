@@ -308,18 +308,39 @@ ${info.limit ? "LIMIT " + info.limit : ""}`);
 
     static getPost(id)
     {
-        return db.promise.oneOrNone(`SELECT *
+        return db.promise.oneOrNone(`SELECT id, author, created, forum, message, thread, isEdited as "isEdited"
                                      FROM posts
                                      WHERE id = ${id}`)
     }
 
     static alterPost(id, message)
     {
-        return db.promise.one(`UPDATE posts SET
-                               message = '${message}',
-                               isEdited = true
-                               WHERE id = ${id}
-                               RETURNING isEdited, id, author, created, forum, message, thread`);
+        return db.promise.task("alter-post-task", async t =>
+        {
+            let post = await t.oneOrNone(`SELECT message, forum FROM posts WHERE id = ${id}`);
+            if(post == null)
+                throw {message: `Post ${id} doesn't exist!\n`};
+
+            let forum = await t.oneOrNone(`SELECT slug FROM forums WHERE id = ${post.forum}`);
+
+
+            if(post.message === message || message === undefined)
+            {
+                post = await dbRequests.getPost(id);
+                post.forum = forum.slug;
+
+                return post;
+            }
+
+            post = await t.one(`UPDATE posts SET
+                                message = '${message}',
+                                isEdited = true
+                                WHERE id = ${id}
+                                RETURNING isEdited as "isEdited", id, author, created, forum, message, thread`);
+            post.forum = forum.slug;
+
+            return post
+        });
     }
 
     /* Services */
@@ -331,25 +352,25 @@ ${info.limit ? "LIMIT " + info.limit : ""}`);
     static forumsCount()
     {
         return db.promise.one(`SELECT COUNT(*)
-                       FROM forums`)
+                               FROM forums`)
     }
 
     static threadsCount()
     {
         return db.promise.one(`SELECT COUNT(*)
-                       FROM threads`);
+                               FROM threads`);
     }
 
     static postsCount()
     {
         return db.promise.one(`SELECT COUNT(*)
-                       FROM posts`);
+                               FROM posts`);
     }
 
     static usersCount()
     {
         return db.promise.one(`SELECT COUNT(*)
-                       FROM users`)
+                               FROM users`)
     }
 
 }
