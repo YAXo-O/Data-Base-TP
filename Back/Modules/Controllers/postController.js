@@ -60,8 +60,6 @@ class postController
             res.status(404).json({message: `Can't find message with id ${req.params.id}!\n`});
         }
 
-        delete post.forum;
-        console.log(post);
         res.status(200).send(post);
     }
 }
