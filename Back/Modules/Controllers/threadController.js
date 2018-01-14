@@ -7,58 +7,20 @@ class threadController
     {
         let time = (new Date()).toISOString();// Magic for exact time
 
-        let thread = await requests.getThread(req.params.slug_id);
-        if(thread === null)
+        let result = null;
+        try
         {
-            res.status(404).json({message: `Thread ${req.params.slug_id} isn't found!\n`});
+            result = await requests.createPosts(req.body, req.params.slug_id, time);
+        }
+        catch(error)
+        {
+            res.status(error.status).json({message: error.message});
 
             return;
         }
 
-        for(let i = 0; i < req.body.length; i++)
-        {
-            if(req.body[i].parent === undefined)
-                continue;
 
-            let tmp = await requests.checkParent(req.body[i], thread.id);
-            if(tmp.count === "0")
-            {
-                res.status(409).json({message: `One of posts' parent is absent from this thread!\n`});
-
-                return;
-            }
-
-            let author = await requests.getUserId(tmp.author);
-            if(author === null)
-            {
-                res.status(404).json({message: `One of authors doesn't exist!\n`});
-
-                return;
-            }
-        }
-
-        let forum = await requests.incrementPost(thread.forum, req.body.length);
-        let created = [];
-        for(let i = 0; i < req.body.length; i++)
-        {
-            try
-            {
-                let result = await requests.createPost(req.body[i], thread.forum, thread.id, time);
-                if(req.body[i].parent)
-                    result.parent = req.body[i].parent;
-                result.forum = forum.slug;
-
-                result.created = time;
-
-                created.push(result);
-            }
-            catch(error)
-            {
-                console.log(error);
-            }
-        }
-
-        res.status(201).json(created);
+        res.status(201).json(result);
     }
 
     static async threadShowDetails(req, res)

@@ -20,44 +20,49 @@ class postController
 
         let result = {post: message};
 
-        /*
-        console.log(req.query);
         if(req.query.related)
         {
-            if(req.query.related === "user")
-                result.author = await requests.getUser(message.author);
-            if(req.query.related === "forum")
+            let keys = req.query.related.split(",");
+            for(let i = 0; i < keys.length; i++)
             {
-                result.forum = await await requests.getForumFullById(message.forum);
-                result.forum.posts = +result.forum.posts;
-            }
-            if(req.qeury.related === "thread")
-            {
-                result.thread = await requests.getThread(message.thread);
-                result.thread.forum = forum.slug;
+                if(keys[i] === "user")
+                    result.author = await requests.getUser(message.author);
+                if(keys[i] === "forum")
+                {
+                    result.forum = await await requests.getForumFullById(forum.id);
+                    result.forum.posts = +result.forum.posts;
+                    result.forum.user = result.forum.username;
+                    delete result.forum.username;
+                }
+                if(keys[i] === "thread")
+                {
+                    result.thread = await requests.getThread(message.thread);
+                    result.thread.forum = forum.slug;
+                }
             }
         }
-        */
 
         res.status(200).json(result);
     }
 
     static async alterIdDetails(req, res)
     {
+        let post = null;
         try
         {
-            let post = await requests.alterPost(req.params.id, req.body.message);
-            let forum = await requests.getForumSlug(post.forum);
+            post = await requests.alterPost(req.params.id, req.body.message);
+            let forumSlug = await requests.getForumSlug(post.forum);
 
-            post.forum = forum.slug;
-            post.parent = +post.parent;
-
-            res.status(200).json(post);
+            post.forum = forumSlug.slug;
         }
         catch(err)
         {
             res.status(404).json({message: `Can't find message with id ${req.params.id}!\n`});
         }
+
+        delete post.forum;
+        console.log(post);
+        res.status(200).send(post);
     }
 }
 

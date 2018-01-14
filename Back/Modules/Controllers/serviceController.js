@@ -6,7 +6,7 @@ class serviceController
     {
         await requests.purge();
 
-        res.status(200);
+        res.status(200).end();
     }
 
     static async status(req, res)

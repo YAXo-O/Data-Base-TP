@@ -103,7 +103,7 @@ ${info.limit ? "LIMIT " + info.limit : ""}`);
     {
         return db.promise.oneOrNone(`SELECT *
                                      FROM forums
-                                     WHERE id = ${id}`)
+                                     WHERE id = '${id}'`)
     }
 
     static createForum(info)
@@ -164,11 +164,6 @@ ${info.limit ? "LIMIT " + info.limit : ""}`);
                                      WHERE LOWER(slug) = LOWER('${slug_id}')`);
     }
 
-    static getThreadSlug(id)
-    {
-        return db.promise.oneOrNone(`SELECT slug FROM threads WHERE id = ${id}`)
-    }
-
     static alterThread(id, info)
     {
         return db.promise.one(`UPDATE threads SET
@@ -224,6 +219,81 @@ ${info.limit ? "LIMIT " + info.limit : ""}`);
     }
 
     /* Posts */
+    static createPosts(posts, slug_id, time)
+    {
+        return db.promise.task("createTask", async t =>
+        {
+
+            let thread = null;
+            if(isFinite(slug_id) && Number.isInteger(Number(slug_id)))
+                thread = await t.oneOrNone(`SELECT slug, id, forum FROM threads
+                                         WHERE id = ${slug_id}`);
+            else
+                thread = await t.oneOrNone(`SELECT slug, id, forum FROM threads
+                                     WHERE LOWER(slug) = LOWER('${slug_id}')`);
+            if(thread === null)
+                throw  {message: `Post ${slug_id} doesn't exist!\n`, status: 404};
+
+            await t.none(`BEGIN`);
+
+            // Increment forum
+            let forum = await t.one(`UPDATE forums SET
+                                     posts = posts + ${posts.length} 
+                                     WHERE id = ${thread.forum}
+                                     RETURNING slug`);
+
+            let result = [];
+
+            for(let i = 0; i < posts.length; i++)
+            {
+                // Check parent
+                if(posts[i].parent && posts[i].parent != 0)
+                {
+                    let parent = await t.oneOrNone(`SELECT thread FROM posts WHERE id = ${posts[i].parent}`);
+                    if(parent === null || parent.thread !== thread.id)
+                    {
+                        await t.none(`ROLLBACK`);
+                        throw {message: `One of posts has parent from another thread!\n`, status: 409};
+                    }
+                }
+
+                // Check author
+                let author = await t.oneOrNone(`SELECT id FROM users 
+                                                   WHERE LOWER(nickname) = LOWER('${posts[i].author}')`);
+                if(author === null)
+                {
+                    await t.none(`ROLLBACK`);
+                    throw {message: `Author of one of the posts doesn't exist!\n`, status: 404};
+                }
+
+                try
+                {
+                    let insert = "author, created, forum, thread, message" + (posts[i].parent ? ", parent" : "");
+                    let values = `'${posts[i].author}', '${posts[i].created || time}', '${thread.forum}',
+                               '${thread.id}', '${posts[i].message}'
+                               ${posts[i].parent ? ", '" + posts[i].parent + "'" : ""}`;
+                    let tmp = await t.one(`INSERT INTO posts(${insert})
+                                           VALUES(${values})
+                                           RETURNING *`);
+                    tmp.forum = forum.slug;
+                    tmp.parent = +tmp.parent;
+                    result.push(tmp);
+                }
+                catch(error)
+                {
+                    await t.none(`ROLLBACK`);
+
+                    throw {message: `Error while inserting!\n`, status: 409};
+                }
+            }
+
+            await t.none(`COMMIT`);
+
+            return result;
+        });
+    }
+
+    /*
     static createPost(post, forum, thread, time)
     {
         return db.promise.one(`INSERT INTO posts(author, message, ${post.parent ? "parent," : ""} forum, thread 
@@ -234,6 +304,7 @@ ${info.limit ? "LIMIT " + info.limit : ""}`);
                                RETURNING author, id, isEdited, message, thread, created`);
         //to_char(created, 'YYYY-MM-DD"T"HH24:MI:SS.MSOF:00')
     }
+    */
 
     static getPost(id)
     {
@@ -248,14 +319,7 @@ ${info.limit ? "LIMIT " + info.limit : ""}`);
                                message = '${message}',
                                isEdited = true
                                WHERE id = ${id}
-                               RETURNING *`);
-    }
-
-    static checkParent(post, thread)
-    {
-        return db.promise.oneOrNone(`SELECT COUNT(*)
-                                     FROM posts
-                                     WHERE id = ${post.parent} AND thread = ${thread}`);
+                               RETURNING id, author, created, forum, message, thread`);
     }
 
     /* Services */
