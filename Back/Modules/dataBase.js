@@ -33,6 +33,13 @@ class dbRequests
                                      FROM users WHERE LOWER(nickname) = LOWER('${nickname}')`);
     }
 
+    static getUserId(nickname)
+    {
+        return db.promise.oneOrNone(`SELECT id
+                                     FROM users
+                                     WHERE nickname = '${nickname}'`);
+    }
+
     static checkMail(nickname, mail)
     {
         return db.promise.manyOrNone(`SELECT nickname, email
@@ -90,6 +97,13 @@ ${info.limit ? "LIMIT " + info.limit : ""}`);
         return db.promise.oneOrNone(`SELECT * 
                                      FROM forums
                                      WHERE LOWER(slug) = LOWER('${slug}')`);
+    }
+
+    static getForumFullById(id)
+    {
+        return db.promise.oneOrNone(`SELECT *
+                                     FROM forums
+                                     WHERE id = ${id}`)
     }
 
     static createForum(info)
@@ -150,10 +164,16 @@ ${info.limit ? "LIMIT " + info.limit : ""}`);
                                      WHERE LOWER(slug) = LOWER('${slug_id}')`);
     }
 
+    static getThreadSlug(id)
+    {
+        return db.promise.oneOrNone(`SELECT slug FROM threads WHERE id = ${id}`)
+    }
+
     static alterThread(id, info)
     {
         return db.promise.one(`UPDATE threads SET
-                               ${info.title ? "title = " + "'" + info.title + "'," : ""}
+                               ${info.title ? "title = " + "'" + info.title + "'" : ""}
+                               ${info.title && info.message ? "," : ""}
                                ${info.message ? "message = " + "'" + info.message + "'" : ""}
                                WHERE id = '${id}'
                                RETURNING *`);
@@ -215,6 +235,58 @@ ${info.limit ? "LIMIT " + info.limit : ""}`);
         //to_char(created, 'YYYY-MM-DD"T"HH24:MI:SS.MSOF:00')
     }
 
+    static getPost(id)
+    {
+        return db.promise.oneOrNone(`SELECT *
+                                     FROM posts
+                                     WHERE id = ${id}`)
+    }
+
+    static alterPost(id, message)
+    {
+        return db.promise.one(`UPDATE posts SET
+                               message = '${message}',
+                               isEdited = true
+                               WHERE id = ${id}
+                               RETURNING *`);
+    }
+
+    static checkParent(post, thread)
+    {
+        return db.promise.oneOrNone(`SELECT COUNT(*)
+                                     FROM posts
+                                     WHERE id = ${post.parent} AND thread = ${thread}`);
+    }
+
+    /* Services */
+    static purge()
+    {
+        return db.promise.none(`TRUNCATE users CASCADE`);
+    }
+
+    static forumsCount()
+    {
+        return db.promise.one(`SELECT COUNT(*)
+                       FROM forums`)
+    }
+
+    static threadsCount()
+    {
+        return db.promise.one(`SELECT COUNT(*)
+                       FROM threads`);
+    }
+
+    static postsCount()
+    {
+        return db.promise.one(`SELECT COUNT(*)
+                       FROM posts`);
+    }
+
+    static usersCount()
+    {
+        return db.promise.one(`SELECT COUNT(*)
+                       FROM users`)
+    }
 
 }
 

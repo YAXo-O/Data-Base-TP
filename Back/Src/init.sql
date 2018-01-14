@@ -57,9 +57,11 @@ CREATE TABLE IF NOT EXISTS votes
   UNIQUE(voterNickname, voiceThread)
 );
 
+/*
 CREATE TABLE IF NOT EXISTS usersForums
 (
   nickname VARCHAR NOT NULL REFERENCES users(nickname),
   forum INTEGER REFERENCES forums(id)
 );
+*/
 

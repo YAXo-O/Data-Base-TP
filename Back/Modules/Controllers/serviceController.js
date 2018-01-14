@@ -1,13 +1,24 @@
+const requests = require("../dataBase.js").dbRequests;
+
 class serviceController
 {
-    static clear(req, res)
+    static async clear(req, res)
     {
-        res.send("Clear");
+        await requests.purge();
+
+        res.status(200);
     }
 
-    static status(req, res)
+    static async status(req, res)
     {
-        res.send("Status");
+        let result = {};
+
+        result.user = +(await requests.usersCount()).count;
+        result.forum = +(await requests.forumsCount()).count;
+        result.thread = +(await requests.threadsCount()).count;
+        result.post = +(await requests.postsCount()).count;
+
+        res.status(200).json(result);
     }
 }
 
