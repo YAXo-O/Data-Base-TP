@@ -7,20 +7,14 @@ class threadController
     {
         let time = (new Date()).toISOString();// Magic for exact time
 
-        let result = null;
         try
         {
-            result = await requests.createPosts(req.body, req.params.slug_id, time);
+            res.status(201).json(await requests.createPosts(req.body, req.params.slug_id, time));
         }
         catch(error)
         {
             res.status(error.status).json({message: error.message});
-
-            return;
         }
-
-
-        res.status(201).json(result);
     }
 
     static async threadShowDetails(req, res)
@@ -77,18 +71,19 @@ class threadController
         let posts = [];
         switch(req.query.sort)
         {
+            default:
             case "flat":
                 posts = await requests.flatPosts(thread.id, req.query.limit, req.query.since, req.query.desc);
                 break;
 
             case "tree":
+                posts = await requests.treePosts(thread.id, req.query.limit, req.query.since, req.query.desc);
                 break;
 
             case "parent_tree":
+                posts = await requests.parentTreePosts(thread.id, req.query.limit, req.query.since, req.query.desc);
                 break;
 
-            default:
-                res.status(200).json(posts);
         }
 
         posts.forEach((elem) =>

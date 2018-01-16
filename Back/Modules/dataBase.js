@@ -211,12 +211,69 @@ ${info.limit ? "LIMIT " + info.limit : ""}`);
 
     static flatPosts(id, limit, since, desc)
     {
-        return db.promise.manyOrNone(`SELECT * FROM posts
+        return db.promise.manyOrNone(`SELECT id, author, created, forum, isEdited as "isEdited", 
+                                      message, parent, thread
+                                      FROM posts
                                       WHERE thread = '${id}'
-                                      ${since ? "AND id > " + since : ""}
-                                      ORDER BY created ${desc ? "DESC" : "ASC"}, id ${desc ? "DESC" : "ASC"}
+                                      ${since ? "AND id " + (desc === "true" ? "< " : "> ") + since : ""}
+                                      ORDER BY created ${desc === "true" ? "DESC" : "ASC"}, 
+                                      id ${desc === "true" ? "DESC" : "ASC"}
                                       ${limit ? "LIMIT " + limit : ""}`);
     }
+
+
+    static treePosts(id, limit, since, desc)
+    {
+           return db.promise.manyOrNone(`WITH RECURSIVE r AS
+                                        (
+                                            SELECT posts.*, ARRAY[id] AS path
+                                            FROM posts 
+                                            WHERE posts.parent = 0
+            
+                                            UNION
+            
+                                            SELECT posts.*, path || posts.id AS path
+                                            FROM r JOIN posts on(r.id = posts.parent)
+                                        )
+        
+                                        SELECT * FROM r
+                                        WHERE thread = ${id} 
+                                        ${since ? "AND path " + (desc === "true" ? "< " : "> ") + 
+                                        "(SELECT path FROM r WHERE id = " 
+                                        + since + ")" : ""}
+                                        ORDER BY path ${desc === "true" ? "DESC" : "ASC"}
+                                        ${limit ? "LIMIT " + limit : ""}`
+                                        );
+    }
+
+    static parentTreePosts(id, limit, since, desc)
+    {
+        let descStr = desc === "true" ? " DESC " : " ASC ";
+        let sign = desc === "true" ? " < " : " > ";
+        return db.promise.manyOrNone(`WITH RECURSIVE r AS
+                                        (
+                                            SELECT posts.*, ARRAY[id] AS path
+                                            FROM posts 
+                                            WHERE posts.parent = 0
+            
+                                            UNION
+            
+                                            SELECT posts.*, path || posts.id AS path
+                                            FROM r JOIN posts on(r.id = posts.parent)
+                                        )
+        
+                                        SELECT * FROM r
+                                        WHERE thread = ${id}
+                                        ${limit ? "AND path[1] in(SELECT id FROM r WHERE parent = 0 AND " +
+                                        "thread = " + id + (since ? " AND path " + sign + 
+                                        " (SELECT path FROM r WHERE id = "
+                                        + since + " AND thread = " + id + " ) " : " ") +
+                                        " ORDER BY created " + descStr +
+                                        "LIMIT " + limit + ")" : ""}
+                                        ORDER BY path ${descStr}`);
+    }
+    //+ (since ? " AND path > (SELECT path FROM r WHERE id = "
+    //+ since + " AND thread = " + id + " ) " : " ") +
 
     /* Posts */
     static createPosts(posts, slug_id, time)
@@ -227,10 +284,10 @@ ${info.limit ? "LIMIT " + info.limit : ""}`);
             let thread = null;
             if(isFinite(slug_id) && Number.isInteger(Number(slug_id)))
                 thread = await t.oneOrNone(`SELECT slug, id, forum FROM threads
-                                         WHERE id = ${slug_id}`);
+                                            WHERE id = ${slug_id}`);
             else
                 thread = await t.oneOrNone(`SELECT slug, id, forum FROM threads
-                                     WHERE LOWER(slug) = LOWER('${slug_id}')`);
+                                            WHERE LOWER(slug) = LOWER('${slug_id}')`);
             if(thread === null)
                 throw  {message: `Post ${slug_id} doesn't exist!\n`, status: 404};
 
@@ -272,9 +329,11 @@ ${info.limit ? "LIMIT " + info.limit : ""}`);
                     let values = `'${posts[i].author}', '${posts[i].created || time}', '${thread.forum}',
                                '${thread.id}', '${posts[i].message}'
                                ${posts[i].parent ? ", '" + posts[i].parent + "'" : ""}`;
+
                     let tmp = await t.one(`INSERT INTO posts(${insert})
                                            VALUES(${values})
-                                           RETURNING *`);
+                                           RETURNING id, author, created, forum, isEdited as "isEdited", 
+                                           message, parent, thread`);
                     tmp.forum = forum.slug;
                     tmp.parent = +tmp.parent;
                     result.push(tmp);
@@ -292,19 +351,6 @@ ${info.limit ? "LIMIT " + info.limit : ""}`);
             return result;
         });
     }
-
-    /*
-    static createPost(post, forum, thread, time)
-    {
-        return db.promise.one(`INSERT INTO posts(author, message, ${post.parent ? "parent," : ""} forum, thread 
-                               ${time ? ", created" : ""})
-                               VALUES('${post.author}', '${post.message}',
-                               ${post.parent ? post.parent + "," : ""} '${forum}', '${thread}' 
-                               ${time ? ", '" + time + "'" : ""})
-                               RETURNING author, id, isEdited, message, thread, created`);
-        //to_char(created, 'YYYY-MM-DD"T"HH24:MI:SS.MSOF:00')
-    }
-    */
 
     static getPost(id)
     {
