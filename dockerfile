@@ -5,22 +5,12 @@ MAINTAINER Yermakov Alex
 # Update packages
 RUN apt-get -y update
 
-# Install postgresql
-ENV PGVER 9.6
-
-RUN apt-get install -y wget curl python
-
-RUN echo deb http://apt.postgresql.org/pub/repos/apt/ xenial-pgdg main > /etc/apt/sources.list.d/pgdg.list
-
-RUN wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | \
-         apt-key add -
-
-RUN apt-get -y update
-
-RUN apt-get install -y postgresql-$PGVER
-
-# Run the rest of the commands as the ``postgres`` user created by the ``postgres-$PGVER`` package when it was ``apt-get installed``
-USER postgres
+# Postgres install
+RUN apt-get update
+RUN apt-get install postgresql postgresql-contrib
+RUN -u postgres createuser -s -d docker
+USER docker
+RUN createdb -O docker docker
 
 # Create a PostgreSQL role named ``docker`` with ``docker`` as the password and
 # then create a database `docker` owned by the ``docker`` role.
@@ -54,11 +44,10 @@ RUN apt-get install -y nodejs
 ADD . /db_technopark
 WORKDIR /db_technopark
 RUN npm install
-RUN npm run webpack-prod
 
 # Set port
 EXPOSE 5000
 
-# Run PostgreSQL è server
+# Run PostgreSQL Ã¨ server
 ENV PGPASSWORD docker
 CMD service postgresql start && psql -h localhost -U docker -d docker -f ./Back/Src/init.sql && npm start
